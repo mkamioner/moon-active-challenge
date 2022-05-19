@@ -1,53 +1,57 @@
 const fs = require('fs');
-const express = require('express')
-const app = express()
-const port = +process.argv[2] || 3000
+const http = require('http');
+const cluster = require('cluster');
 
-const client = require('redis').createClient()
+const port = +process.argv[2] || 3000;
+
+const client = require('redis').createClient();
+
 client.on('error', (err) => console.log('Redis Client Error', err));
-
-client.on('ready', () => {
-    app.listen(port, '0.0.0.0', () => {
-        console.log(`Example app listening at http://0.0.0.0:${port}`)
-    })
-})
-
+const THREADS = 2;
 const cardsData = fs.readFileSync('./cards.json');
 const cards = JSON.parse(cardsData);
-
+const CARD_DATA = cards.reduce(
+  (prev, curr, index) => ({ ...prev, [index]: JSON.stringify(curr) }),
+  {},
+);
+const DATA_COMPLETE = JSON.stringify({ id: 'ALL CARDS' });
+const DATA_COMPLETE_LENGTH = DATA_COMPLETE.length;
 async function getMissingCard(key) {
-    const userCards = await client.zRange(key, 0, -1)
-    let allCards = [...cards]
-
-    userCards.forEach((userCard, idx) => {
-        allCards = allCards.filter(function (value, index, arr) {
-            return JSON.parse(userCard).id !== value.id;
-        })
-    })
-
-    return allCards.pop();
+  const newIndex = (await client.incr(key)) - 1;
+  if (newIndex < 100) {
+    return [CARD_DATA[newIndex], 91];
+  }
+  return [DATA_COMPLETE, DATA_COMPLETE_LENGTH];
 }
+const CONTENT_TYPE = 'application/json; charset=utf-8';
 
-app.get('/card_add', async (req, res) => {
-    const  key = 'user_id:' + req.query.id
-    let missingCard = ''
-    while (true){
-        missingCard =await getMissingCard(key);
-        if(missingCard === undefined){
-            res.send({id: "ALL CARDS"})
-            return
-        }
-        result = await client.ZADD(key, {score: 0, value: JSON.stringify(missingCard)}, 'NX')
-        if(result === 0){
-            continue
-        }
-        break
-    }
-    res.send(missingCard)
-})
+const server = http.createServer((req, res) => {
+  if (req.url[1] !== 'r') {
+    getMissingCard(req.url.substring(13)).then(([body, length]) => {
+      res.writeHead(200, { 'Content-Type': CONTENT_TYPE, 'Content-Length': length });
+      res.write(body);
+      res.end();
+    }).catch((err) => console.log(err));
+    return;
+  }
 
-app.get('/ready', async (req, res) => {
-    res.send({ready: true})
-})
+  res.writeHead(200, { 'Content-Type': CONTENT_TYPE, 'Content-Length': 14 });
+  res.write('{"ready":true}');
+  res.end();
+});
 
-client.connect();
+if (THREADS > 1 && cluster.isPrimary) {
+  for (let i = 0; i < THREADS; i += 1) {
+    cluster.fork();
+  }
+} else {
+  client.on('ready', () => {
+    server.listen(port, '0.0.0.0', () => {
+      console.log(`Example app listening at http://0.0.0.0:${port}`);
+    });
+  });
+
+  client.connect();
+}
+// forking
+// minimize
