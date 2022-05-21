@@ -4,15 +4,14 @@ const redis = require('redis');
 
 const port = +process.argv[2] || 3000;
 
-// const client = require('redis').createClient();
-
+const CONNECTIONS = [];
 const DATABASE_CONNECTIONS = ['01234567', '89abcdef']
   .reduce((prev, curr, index) => {
-    const clients = [...curr].reduce((allClients, shard) => {
-      const client = redis.createClient({ database: index });
-      client.on('error', (err) => console.log('Redis Client Error', index, err));
-      return { ...allClients, [shard]: client };
-    }, {});
+    const client = redis.createClient({ database: index });
+    client.on('error', (err) => console.log('Redis Client Error', index, err));
+    CONNECTIONS.push(client);
+    const clients = [...curr]
+      .reduce((allClients, shard) => ({ ...allClients, [shard]: client }), {});
 
     return {
       ...prev,
@@ -29,7 +28,7 @@ const CARD_DATA = cards.reduce(
 const DATA_COMPLETE = JSON.stringify({ id: 'ALL CARDS' });
 const DATA_COMPLETE_LENGTH = DATA_COMPLETE.length;
 async function getMissingCard(key) {
-  const newIndex = (await DATABASE_CONNECTIONS[(key || 'a')[0]].incr(key)) - 1;
+  const newIndex = (await DATABASE_CONNECTIONS[key[0]].incr(key)) - 1;
   if (newIndex < 100) {
     return [CARD_DATA[newIndex], 91];
   }
@@ -38,7 +37,7 @@ async function getMissingCard(key) {
 const CONTENT_TYPE = 'application/json; charset=utf-8';
 
 const server = http.createServer((req, res) => {
-  getMissingCard(req.url.substring(13)).then(([body, length]) => {
+  getMissingCard(req.url.substring(13) || 'a').then(([body, length]) => {
     res.writeHead(200, { 'Content-Type': CONTENT_TYPE, 'Content-Length': length });
     res.write(body);
     res.end();
@@ -46,10 +45,10 @@ const server = http.createServer((req, res) => {
 });
 
 Promise.all(
-  Object.keys(DATABASE_CONNECTIONS)
-    .map((shard) => new Promise((resolve) => {
-      DATABASE_CONNECTIONS[shard].on('ready', resolve);
-      DATABASE_CONNECTIONS[shard].connect();
+  CONNECTIONS
+    .map((conn) => new Promise((resolve) => {
+      conn.on('ready', resolve);
+      conn.connect();
     })),
 ).then(() => {
   server.listen(port, '0.0.0.0', () => {
