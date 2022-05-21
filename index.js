@@ -13,11 +13,12 @@ const CARD_DATA = cards.reduce(
   {},
 );
 const DATA_COMPLETE = JSON.stringify({ id: 'ALL CARDS' });
-const DATA_COMPLETE_LENGTH = DATA_COMPLETE.length;
+const DATA_COMPLETE_LENGTH = DATA_COMPLETE.length.toString();
+
 async function getMissingCard(key) {
   const newIndex = (await client.incr(key)) - 1;
   if (newIndex < 100) {
-    return [CARD_DATA[newIndex], 91];
+    return [CARD_DATA[newIndex], '91'];
   }
   return [DATA_COMPLETE, DATA_COMPLETE_LENGTH];
 }
