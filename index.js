@@ -3,11 +3,11 @@ const http = require('http');
 const cluster = require('cluster');
 
 const port = +process.argv[2] || 3000;
+const THREADS = +process.env.THREAD_COUNT || 1;
 
 const client = require('redis').createClient();
 
 client.on('error', (err) => console.log('Redis Client Error', err));
-const THREADS = 2;
 const cardsData = fs.readFileSync('./cards.json');
 const cards = JSON.parse(cardsData);
 const CARD_DATA = cards.reduce(
