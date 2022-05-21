@@ -1,5 +1,5 @@
 {
-  "name": "be-meetup-challenge",
+  "name": "turtle-necks",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -8,12 +8,21 @@
   },
   "repository": {
     "type": "git",
-    "url": "challenge"
+    "url": "git+https://github.com/mkamioner/turtle-necks.git"
   },
-  "author": "Moonactive",
+  "keywords": [],
+  "author": "",
   "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/mkamioner/turtle-necks/issues"
+  },
+  "homepage": "https://github.com/mkamioner/turtle-necks#readme",
   "dependencies": {
-    "express": "^4.17.2",
     "redis": "^4.0.1"
+  },
+  "devDependencies": {
+    "eslint": "^8.15.0",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-plugin-import": "^2.26.0"
   }
 }
