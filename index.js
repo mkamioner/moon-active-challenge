@@ -1,42 +1,46 @@
 const fs = require('fs');
-const http = require('http');
+const net = require('net');
+const turboHttp = require('turbo-http');
 
-const port = +process.argv[2] || 3000;
-
-const client = require('redis').createClient();
-
-client.on('error', (err) => console.log('Redis Client Error', err));
+const PORT = +process.argv[2] || 3000;
+const PRIMARY_PORT = 4001;
 const cardsData = fs.readFileSync('./cards.json');
 const cards = JSON.parse(cardsData);
-const CARD_DATA = cards.reduce(
-  (prev, curr, index) => ({ ...prev, [index]: JSON.stringify(curr) }),
-  {},
-);
-const COMPLETED_BODY = JSON.stringify({ id: 'ALL CARDS' });
-const COMPLETED_HEADER = {'Content-Length': '18'};
-const DATA_HEADER = {'Content-Length': '91'};
-async function getMissingCard(key) {
-  return CARD_DATA[(await client.incr(key)) - 1];
-}
+const CARD_DATA = cards.map((card) => Buffer.from(JSON.stringify(card), 'ascii'));
+const COMPLETED_BODY = Buffer.from(JSON.stringify({ id: 'ALL CARDS' }), 'ascii');
+const USER_INDEXES = {};
 
-const server = http.createServer((req, res) => {
-  getMissingCard(req.url.substring(13)).then((body) => {
+function createServer() {
+  const server = turboHttp.createServer((req, res) => {
+    const key = req.url.substring(13);
+    const index = (USER_INDEXES[key] ?? 100) - 1;
+    const body = CARD_DATA[index];
     if (body) {
-      res.writeHead(200, DATA_HEADER);
-      res.write(body);
-      res.end();
+      USER_INDEXES[key] = index;
+      res.end(body);
     } else {
-      res.writeHead(200, COMPLETED_HEADER);
-      res.write(COMPLETED_BODY);
-      res.end();
+      res.end(COMPLETED_BODY);
     }
   });
-});
 
-client.on('ready', () => {
-  server.listen(port, '0.0.0.0', () => {
-    console.log(`Example app listening at http://0.0.0.0:${port}`);
+  server.listen(PRIMARY_PORT, '0.0.0.0', () => {
+    console.log('Main server alive');
   });
-});
+}
 
-client.connect();
+function mirrorServer() {
+  const mirror = net.createServer((soc) => {
+    const target = net.createConnection({ port: PRIMARY_PORT, host: '0.0.0.0' });
+    soc.pipe(target);
+    target.pipe(soc);
+  });
+  mirror.listen(PORT, '0.0.0.0', () => {
+    console.log('Mirror proxy server alive');
+  });
+}
+
+if (PORT === PRIMARY_PORT) {
+  createServer();
+} else {
+  mirrorServer();
+}
