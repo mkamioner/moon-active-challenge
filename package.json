@@ -18,7 +18,8 @@
   },
   "homepage": "https://github.com/mkamioner/turtle-necks#readme",
   "dependencies": {
-    "redis": "^4.0.1"
+    "redis": "^4.0.1",
+    "turbo-http": "^0.3.2"
   },
   "devDependencies": {
     "eslint": "^8.15.0",
