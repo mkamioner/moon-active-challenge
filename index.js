@@ -9,39 +9,29 @@ const CARD_DATA = cards.reduce(
   (prev, curr, index) => ({ ...prev, [index]: JSON.stringify(curr) }),
   {},
 );
+const CARDS_COUNT = cards.length;
 const DATA_COMPLETE = JSON.stringify({ id: 'ALL CARDS' });
-const DATA_COMPLETE_LENGTH = DATA_COMPLETE.length;
+const DATA_COMPLETE_LENGTH = DATA_COMPLETE.length.toString();
 const USER_DATA = {};
 const CONTENT_TYPE = 'application/json; charset=utf-8';
 
-async function getMissingCard(key) {
-  const newIndex = (USER_DATA[key] ?? 0) + 1;
-  USER_DATA[key] = newIndex;
-  if (newIndex < 100) {
-    return [CARD_DATA[newIndex], 91];
-  }
-  return [DATA_COMPLETE, DATA_COMPLETE_LENGTH];
-}
-let api;
 function returnCardApi(req, res) {
-  getMissingCard(req.url.substring(13)).then(([body, length]) => {
-    res.writeHead(200, { 'Content-Type': CONTENT_TYPE, 'Content-Length': length });
-    res.write(body);
+  const key = req.url.substring(13);
+  const newIndex = (USER_DATA[key] ?? CARDS_COUNT) - 1;
+  if (newIndex < 0) {
+    res.writeHead(200, { 'Content-Type': CONTENT_TYPE, 'Content-Length': DATA_COMPLETE_LENGTH });
+    res.write(DATA_COMPLETE);
     res.end();
-  }).catch((err) => console.log(err));
-}
-function returnIsUpApi(req, res) {
-  api = returnCardApi;
-  res.writeHead(200, { 'Content-Type': CONTENT_TYPE, 'Content-Length': 14 });
-  res.write('{"ready":true}');
-  res.end();
+  } else {
+    USER_DATA[key] = newIndex;
+    res.writeHead(200, { 'Content-Type': CONTENT_TYPE, 'Content-Length': '91' });
+    res.write(CARD_DATA[newIndex]);
+    res.end();
+  }
 }
 
-api = returnIsUpApi;
 function initServer(port) {
-  const server = http.createServer((req, res) => {
-    api(req, res);
-  });
+  const server = http.createServer(returnCardApi);
   server.listen(port, '0.0.0.0', () => {
     console.log(`Example app listening at http://0.0.0.0:${port}`);
   });
