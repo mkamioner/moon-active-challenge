@@ -16,8 +16,11 @@ const CARD_DATA = cards.reduce(
 );
 const DATA_COMPLETE = JSON.stringify({ id: 'ALL CARDS' });
 const DATA_COMPLETE_LENGTH = DATA_COMPLETE.length;
+const USER_DATA = {};
 async function getMissingCard(key) {
-  const newIndex = (await client.incr(key)) - 1;
+  const newIndex = (USER_DATA[key] ?? 0) + 1;
+  USER_DATA[key] = newIndex;
+  // const newIndex = (await client.incr(key)) - 1;
   if (newIndex < 100) {
     return [CARD_DATA[newIndex], 91];
   }
@@ -54,6 +57,8 @@ if (THREADS > 1 && cluster.isPrimary) {
     if (PORT === 4001) {
       initServer(4001);
       initServer(4002);
+    } else {
+      console.log('ignoring other port');
     }
   });
 
