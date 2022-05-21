@@ -41,18 +41,6 @@ api = returnIsUpApi;
 function initServer(port) {
   const server = http.createServer((req, res) => {
     api(req, res);
-    // if (req.url[1] !== 'r') {
-    //   getMissingCard(req.url.substring(13)).then(([body, length]) => {
-    //     res.writeHead(200, { 'Content-Type': CONTENT_TYPE, 'Content-Length': length });
-    //     res.write(body);
-    //     res.end();
-    //   }).catch((err) => console.log(err));
-    //   return;
-    // }
-
-    // res.writeHead(200, { 'Content-Type': CONTENT_TYPE, 'Content-Length': 14 });
-    // res.write('{"ready":true}');
-    // res.end();
   });
   server.listen(port, '0.0.0.0', () => {
     console.log(`Example app listening at http://0.0.0.0:${port}`);
@@ -69,5 +57,3 @@ if (THREADS > 1 && cluster.isPrimary) {
 } else {
   console.log('ignoring other port');
 }
-// forking
-// minimize
